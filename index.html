@@ -2993,7 +2993,10 @@ try { renderHero(); } catch(e){ window.dispatchEvent(new ErrorEvent("error", {me
 try { render(); }     catch(e){ window.dispatchEvent(new ErrorEvent("error", {message:"list: " + e.message})); }
 /* 共有された #p=... を開く。開いた状態を最初の履歴にしておく */
 try {
-  if(s0 && BY_SLUG.has(s0)) openBySlug(s0, true);
+  if(s0 && BY_SLUG.has(s0) && openBySlug(s0, true)){
+    /* アドレスバーにも #p=... を残し、そのままコピーして共有できるようにする */
+    history.replaceState({p:s0}, "", filterQuery() + "#p=" + s0);
+  }
 } catch(e){}
 
 /* 最初の描画のぶんだけ動かす。絞り込みのたびに動くとうるさいので一度きり。 */
