@@ -2994,8 +2994,9 @@ try { render(); }     catch(e){ window.dispatchEvent(new ErrorEvent("error", {me
 /* 共有された #p=... を開く。開いた状態を最初の履歴にしておく */
 try {
   if(s0 && BY_SLUG.has(s0) && openBySlug(s0, true)){
-    /* アドレスバーにも #p=... を残し、そのままコピーして共有できるようにする */
-    history.replaceState({p:s0}, "", filterQuery() + "#p=" + s0);
+    /* 「一覧」→「詳細」の順で履歴を積む。閉じる・戻るで一覧に戻り、サイトの外へ出ない */
+    history.replaceState({}, "", filterQuery());
+    history.pushState({p:s0}, "", filterQuery() + "#p=" + s0);
   }
 } catch(e){}
 
