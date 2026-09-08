@@ -2986,12 +2986,13 @@ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitHooks);
 
 /* ---------- init ----------
    ヒーローと一覧を別々に起動する。片方が転んでも、もう片方は必ず描く。 */
+/* render() が URL を書き換える前に、共有された #p=... を控えておく */
+const s0 = (() => { try { return slugFromHash(); } catch(e){ return ""; } })();
 try { readUrl(); }    catch(e){}
 try { renderHero(); } catch(e){ window.dispatchEvent(new ErrorEvent("error", {message:"hero: " + e.message})); }
 try { render(); }     catch(e){ window.dispatchEvent(new ErrorEvent("error", {message:"list: " + e.message})); }
 /* 共有された #p=... を開く。開いた状態を最初の履歴にしておく */
 try {
-  const s0 = slugFromHash();
   if(s0 && BY_SLUG.has(s0)) openBySlug(s0, true);
 } catch(e){}
 
