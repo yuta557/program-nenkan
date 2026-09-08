@@ -2204,7 +2204,7 @@ function openDetail(i, keep, fromPop){
   }
   document.body.classList.add("locked");
   if(!fromPop) pushProgram(p.slug, wasOpen);
-  $("#xbtn").onclick = closeDetail;
+  $("#xbtn").onclick = () => closeDetail();   /* イベントを fromPop に渡さない */
   $("#prev").onclick = () => openDetail(openIndex - 1, "prev");
   $("#next").onclick = () => openDetail(openIndex + 1, "next");
   /* 送ったあとも同じ矢印を押し続けられるように、押したボタンへ焦点を戻す */
@@ -2215,6 +2215,7 @@ function openDetail(i, keep, fromPop){
   bindSheetScroll(sheet);
 }
 function closeDetail(fromPop){
+  fromPop = fromPop === true;             /* イベント等が渡っても「戻る由来」とは扱わない */
   const d = $("#dialog");
   const wasOpen = d.open;
   if(d.open) d.close();
