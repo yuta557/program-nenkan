@@ -1576,6 +1576,14 @@ ul.feat li::before{
   .art-intl .sheet-art{background-size:42% auto}
   .sheet.art-sci{--art-top:32px}
   .art-sci .sheet-art{background-size:34% auto}
+  /* スクロールで概要と絵を上へ送る（JS が --collapse / --clip-top と高さを更新する）。
+     .dclip は概要の枠。上端で切り、縮めた分だけ本文側が広がる */
+  .dclip{overflow:hidden}
+  .dclip:empty{display:none}
+  .sheet .sheet-art{
+    background-position-y:calc(var(--art-top, 0px) - var(--collapse, 0px));
+    clip-path:inset(var(--clip-top, 0px) 0 0 0);
+  }
 }
 @media (max-width:370px){
   .sheet-head{padding:16px 14px 4px}
@@ -2078,9 +2086,85 @@ function fitTags(){
   const wrapped = [...tags.children].some(c => c.getBoundingClientRect().top >= first.bottom - 1);
   if(wrapped) tags.classList.add("one-row");
 }
+/* ---------- スマホ：スクロールで概要と絵を上へ送る ----------
+   幅の狭い画面で概要が絵の横に並ぶと、応募時期などのスクロール領域が極端に低くなる。
+   本文をスクロールし始めたら、概要は指と同じ速さで上へ流し（見出しの下で切れる）、
+   絵も一定量まで上げて上の空を少し削り、その分だけ見出し側を縮めてスクロール領域を広げる。
+   絵が止まったあとは、絵の下の余白までしかカードは上がらない（本文の上端で切れる）。 */
+const COLLAPSE_MQ = "(max-width:560px) and (min-height:481px)";
+function collapseParts(sheet){
+  const clip = sheet.querySelector(".sheet-head .dclip");
+  return {clip, desc: clip && clip.querySelector(".desc"),
+          body: sheet.querySelector(".sheet-body"), art: sheet.querySelector(".sheet-art")};
+}
+function resetCollapse(sheet){
+  const {clip, desc, body} = collapseParts(sheet);
+  sheet.style.removeProperty("--collapse");
+  sheet.style.removeProperty("--clip-top");
+  if(clip) clip.style.height = "";
+  if(desc) desc.style.transform = "";
+  if(body) body.style.paddingTop = "";
+  delete sheet.dataset.collapseMax;
+}
+function fitCollapse(){
+  const sheet = document.querySelector("#dialog .sheet");
+  if(!sheet) return;
+  resetCollapse(sheet);
+  const {clip, desc, body, art} = collapseParts(sheet);
+  const key = ["art-lab","art-intl","art-sci","art-hum","art-it","art-biz"].find(k => sheet.classList.contains(k));
+  if(!clip || !desc || !body || !art || !key || !matchMedia(COLLAPSE_MQ).matches) return;
+  const g = ART_GEO[key];
+  const sr = sheet.getBoundingClientRect();
+  const size = parseFloat(getComputedStyle(art).backgroundSize) || 0;
+  const artH = sr.width * size / 100 * (g.h / g.w);
+  const artTop = parseFloat(getComputedStyle(sheet).getPropertyValue("--art-top")) || 0;
+  const inkTop = artTop + artH * g.top;              /* 絵の中身（空を除く）の上端・下端 */
+  const inkBot = artTop + artH * g.bottom;
+  const inkH = inkBot - inkTop;
+  const cr = clip.getBoundingClientRect();
+  const clipTop = cr.top - sr.top;                   /* 概要の枠の上端（見出し・団体名の直下） */
+  /* 絵はタグ行（✕ボタン）の下までは上げてよい。その線より上は切る */
+  const xb = sheet.querySelector(".xbtn");
+  const guard = (xb ? xb.getBoundingClientRect().bottom - sr.top : 64) + 4;
+  /* 絵は、中身の上端がタグ行の下に届いたあと、さらに中身の2割ほど削れるところまで上げる */
+  const artMax = Math.max(0, inkTop - guard + inkH * 0.22);
+  const d = sheet.dataset;
+  d.collapseMax = artMax; d.collapseH0 = cr.height; d.collapseClipTop = clipTop;
+  d.collapseInkBot = inkBot; d.collapseMargin = 16;
+  d.bodyPad = parseFloat(getComputedStyle(body).paddingTop) || 0;
+  sheet.style.setProperty("--clip-top", guard + "px");
+  applyCollapse(sheet);
+}
+function applyCollapse(sheet){
+  const d = sheet.dataset;
+  const artMax = parseFloat(d.collapseMax);
+  if(!(artMax >= 0)) return;
+  const {clip, desc, body} = collapseParts(sheet);
+  if(!clip || !desc || !body) return;
+  const s = Math.max(0, body.scrollTop);
+  const H0 = parseFloat(d.collapseH0) || 0;
+  const a = Math.min(s, artMax);                     /* 絵を上げた量 */
+  /* 概要の枠の高さ：指の動きに合わせて縮めるが、絵の下端＋余白より上にはカードを上げない */
+  const floor = parseFloat(d.collapseInkBot) - a + parseFloat(d.collapseMargin) - parseFloat(d.collapseClipTop);
+  const Z = Math.min(H0, Math.max(H0 - s, floor, 0));
+  const c = H0 - Z;                                  /* 見出し側を縮めた量 */
+  clip.style.height = Z + "px";
+  desc.style.transform = "translateY(" + (-s) + "px)";
+  sheet.style.setProperty("--collapse", a + "px");
+  /* 見出しを縮めた分だけ本文の上に詰め物をして、カードが指と同じ速さで動くようにする */
+  body.style.paddingTop = ((parseFloat(d.bodyPad) || 0) + c) + "px";
+}
+function bindCollapse(sheet){
+  const body = sheet.querySelector(".sheet-body");
+  if(!body || body.dataset.collapseBound) return;
+  body.dataset.collapseBound = "1";
+  /* scroll イベントは描画のたびに来るので、そのまま同期で反映する（1コマ遅れて見出しがずれないように） */
+  body.addEventListener("scroll", () => applyCollapse(sheet), {passive:true});
+}
 function fitDesc(){
   const sheet = document.querySelector("#dialog .sheet");
   if(!sheet) return;
+  resetCollapse(sheet);                     /* 縮めた状態で測らない */
   const key = ["art-lab","art-intl","art-sci","art-hum","art-it","art-biz"]
     .find(k => sheet.classList.contains(k));
   const desc = sheet.querySelector(".desc");
@@ -2140,7 +2224,11 @@ function fitDesc(){
   else {
     /* 絵の横に並ぶ概要は、スクロールで絵にかぶらないよう見出し側へ移す */
     const b = sheet.querySelector(".sheet-head .b");
-    if(b) b.appendChild(desc);
+    if(b){
+      let clip = b.querySelector(".dclip");
+      if(!clip){ clip = document.createElement("div"); clip.className = "dclip"; b.appendChild(clip); }
+      clip.appendChild(desc);
+    }
     if(mc){
       let mcTop = mc.getBoundingClientRect().top - sr.top;
       /* 絵が入りきらないときは、カードのほうを余白ぶん下げる */
@@ -2245,9 +2333,10 @@ function openDetail(i, keep, fromPop){
   /* 送ったあとも同じ矢印を押し続けられるように、押したボタンへ焦点を戻す */
   const back = keep === "next" ? $("#next") : keep === "prev" ? $("#prev") : null;
   (back && !back.disabled ? back : $("#xbtn")).focus();
-  fitDesc(); fitTags();
-  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitDesc(); fitTags(); });
+  fitDesc(); fitTags(); fitCollapse();
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitDesc(); fitTags(); fitCollapse(); });
   bindSheetScroll(sheet);
+  bindCollapse(sheet);
 }
 function closeDetail(fromPop){
   fromPop = fromPop === true;             /* イベント等が渡っても「戻る由来」とは扱わない */
@@ -3017,6 +3106,7 @@ window.addEventListener("resize", fitHooks);
 window.addEventListener("resize", tlNoteFit);
 window.addEventListener("resize", fitDesc);
 window.addEventListener("resize", fitTags);
+window.addEventListener("resize", fitCollapse);
 fitHooks();
 requestAnimationFrame(fitHooks);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitHooks);
