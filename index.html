@@ -2073,8 +2073,10 @@ function fitTags(){
   if(!tags) return;
   tags.classList.remove("one-row");
   if(window.innerWidth > 720 || !tags.querySelector(".chipx.sub")) return;
-  const tops = new Set([...tags.children].map(c => Math.round(c.getBoundingClientRect().top)));
-  if(tops.size > 1) tags.classList.add("one-row");
+  /* チップごとに高さが違うので上端では比べず、「先頭チップの下端より下から始まるものがあれば2行目」と見る */
+  const first = tags.children[0].getBoundingClientRect();
+  const wrapped = [...tags.children].some(c => c.getBoundingClientRect().top >= first.bottom - 1);
+  if(wrapped) tags.classList.add("one-row");
 }
 function fitDesc(){
   const sheet = document.querySelector("#dialog .sheet");
