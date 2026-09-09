@@ -1458,11 +1458,14 @@ main.wrap{padding-top:20px; padding-bottom:88px}
   flex:1 1 auto; min-height:0}   /* 画面が低くなったらここだけ縮んでスクロールする。見出し（✕）と下のボタンは縮めない */
 .sheet-foot{flex:0 0 auto}
 .sheet-head{flex:0 0 auto}
-/* 横向きなど極端に低い画面（本文を縮めきっても収まらない高さ）では見出し側も縮めてスクロールさせ、
-   ✕ は上端に貼り付けて常に押せるようにする。通常の縦持ちでは見出しは縮めない */
-@media (max-height:560px){
+/* 横向きなど極端に低い画面（見出し＋下のボタンだけで収まらない高さ）では見出し側も縮めてスクロールさせ、
+   ✕ は上端に貼り付けて常に押せるようにする。縦持ちのスマホ（小さい iPhone でツールバーが出た約550pxを含む）には当てない */
+@media (max-height:480px){
   .sheet-head{flex:0 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch}
   .xbtn{position:sticky; top:0}
+  /* 見出しがスクロールすると、シートに敷いた絵が本文と重なって見えるので、この高さでは絵を出さず文字を全幅にする */
+  .sheet-art{display:none}
+  .sheet{--txt:100%; --txtd:100%}
 }
 /* 一言。黄色いマーカーを敷く */
 .sheet .desc{margin:0 0 34px; max-width:var(--txtd)}
