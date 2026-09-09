@@ -1461,6 +1461,20 @@ main.wrap{padding-top:20px; padding-bottom:88px}
 .sheet-head{flex:0 0 auto}
 /* 横向きなど極端に低い画面（見出し＋下のボタンだけで収まらない高さ）では見出し側も縮めてスクロールさせ、
    ✕ は上端に貼り付けて常に押せるようにする。縦持ちのスマホ（小さい iPhone でツールバーが出た約550pxを含む）には当てない */
+/* スマホを横向きにしたときは横長レイアウトを見せず、縦向きに戻す案内を全面に出す。
+   タッチ端末で、横向きかつ高さが低い（スマホの横持ち）ときだけ。タブレットや PC には出ない */
+.rotate-note{display:none}
+@media (orientation:landscape) and (max-height:500px) and (pointer:coarse){
+  .rotate-note{
+    display:flex; position:fixed; inset:0; z-index:1000; background:var(--bg); color:var(--ink);
+    flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center;
+    font-size:15px; font-weight:700; letter-spacing:-.01em; padding:24px;
+  }
+  .rotate-note svg{width:44px; height:44px; color:var(--accent)}
+  .rotate-note small{display:block; font-size:12px; font-weight:500; color:var(--ink-2); margin-top:2px}
+  /* 案内の下でページがスクロールしないようにする */
+  html, body{overflow:hidden; height:100%}
+}
 @media (max-height:480px){
   .sheet-head{flex:0 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch}
   .xbtn{position:sticky; top:0}
@@ -1883,6 +1897,13 @@ footer.pagefoot b{color:var(--ink-2); font-weight:600}
 </main>
 
 <dialog class="backdrop" id="dialog" aria-label="プログラムの詳細"></dialog>
+<div class="rotate-note" role="status">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.5h2"/>
+    <path d="M20.5 9a8.5 8.5 0 0 0-3-4.2M3.5 15a8.5 8.5 0 0 0 3 4.2"/><path d="M17.5 2.5v2.6h-2.6M6.5 21.5v-2.6h2.6"/>
+  </svg>
+  <div>スマホを縦向きにしてご覧ください<small>このサイトは縦向き表示専用です</small></div>
+</div>
 
 <footer class="pagefoot">
   <div class="wrap">
