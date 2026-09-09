@@ -2075,15 +2075,15 @@ const ART_GEO = {
   "art-it":   {w:520, h:626, bottom:.933, top:.441, left:.077},
   "art-biz":  {w:520, h:601, bottom:.958, top:.260, left:.077}
 };
-/* 絵の「描かれている範囲」（白でない画素の上端・下端。画像を実測した値）。
-   スクロールで絵を上げるときは、この範囲を一切切らない */
+/* 絵の「残すべき範囲」。top はここより上（空のにじみだけの部分）なら切ってよい線、
+   bottom は描き込みの下端（白でない画素を実測）。スクロールで絵を上げるときは top より上を切らない */
 const ART_INK = {
-  "art-lab":  {top:0,    bottom:.970},
-  "art-intl": {top:0,    bottom:.981},
-  "art-sci":  {top:.007, bottom:.947},
-  "art-hum":  {top:.275, bottom:.944},
-  "art-it":   {top:0,    bottom:.944},
-  "art-biz":  {top:.260, bottom:.980}
+  "art-lab":  {top:.36, bottom:.970},   /* 植物の先端の少し上まで */
+  "art-intl": {top:.30, bottom:.981},   /* 飛行機の少し上まで */
+  "art-sci":  {top:.09, bottom:.947},   /* 惑星・原子の少し上まで */
+  "art-hum":  {top:.30, bottom:.944},   /* 窓枠の上端まで */
+  "art-it":   {top:.35, bottom:.944},   /* コードのタグの少し上まで */
+  "art-biz":  {top:.25, bottom:.980}    /* ロケットの先端の少し上まで */
 };
 /* 幅の狭いスマホで、詳細の分野タグ行が2行に折り返すときは、サブの分野を消して1行に収める（メインは残す） */
 function fitTags(){
@@ -2114,6 +2114,10 @@ function resetCollapse(sheet){
   if(clip) clip.style.height = "";
   if(desc) desc.style.transform = "";
   if(body) body.style.paddingTop = "";
+  const head = sheet.querySelector(".sheet-head");
+  if(head) head.style.paddingBottom = "";
+  const bd = sheet.querySelector(".sheet-body .desc");
+  if(bd) bd.style.marginTop = "";
   delete sheet.dataset.collapseMax;
 }
 function fitCollapse(){
@@ -2122,15 +2126,28 @@ function fitCollapse(){
   resetCollapse(sheet);
   const {clip, desc, body, art} = collapseParts(sheet);
   const key = ["art-lab","art-intl","art-sci","art-hum","art-it","art-biz"].find(k => sheet.classList.contains(k));
-  if(!clip || !desc || !body || !art || !key || !matchMedia(COLLAPSE_MQ).matches) return;
+  if(!body || !art || !key || !matchMedia(COLLAPSE_MQ).matches) return;
   const g = ART_GEO[key];
   const sr = sheet.getBoundingClientRect();
   const size = parseFloat(getComputedStyle(art).backgroundSize) || 0;
   const artH = sr.width * size / 100 * (g.h / g.w);
   const artTop = parseFloat(getComputedStyle(sheet).getPropertyValue("--art-top")) || 0;
   const ink = ART_INK[key] || {top:0, bottom:1};
-  const inkTop = artTop + artH * ink.top;            /* 描かれている範囲の上端・下端（実測） */
+  const inkTop = artTop + artH * ink.top;            /* 残すべき範囲の上端・描き込みの下端 */
   const inkBot = artTop + artH * ink.bottom;
+  /* 概要が絵の下に来る配置（freetext）では絵は動かさない。ただし本文の上端を絵の下端＋余白まで下げ、
+     スクロールしてもカードが絵の下に潜り込まないようにする。概要は元の位置から動かさない */
+  if(!clip || !desc){
+    const head = sheet.querySelector(".sheet-head");
+    const bd = sheet.querySelector(".sheet-body .desc");
+    const bodyTop = body.getBoundingClientRect().top - sr.top;
+    const x = inkBot + 12 - bodyTop;
+    if(head && x > 0){
+      head.style.paddingBottom = ((parseFloat(getComputedStyle(head).paddingBottom) || 0) + x) + "px";
+      if(bd) bd.style.marginTop = Math.max(0, (parseFloat(getComputedStyle(bd).marginTop) || 0) - x) + "px";
+    }
+    return;
+  }
   const cr = clip.getBoundingClientRect();
   const clipTop = cr.top - sr.top;                   /* 概要の枠の上端（見出し・団体名の直下） */
   /* 絵はタグ行（✕ボタン）の下までは上げてよい。その線より上は切る */
@@ -2222,7 +2239,9 @@ function fitDesc(){
   /* 空を切って上げるときも、絵の先頭（飛行機など）が✕ボタンより下に残るようにする */
   const xb = sheet.querySelector(".xbtn");
   const guard = (xb ? xb.getBoundingClientRect().bottom - sr.top : 64) + 4;
-  const minTop = guard - artH * g.top;
+  /* 主要部分（ART_INK.top より下）が✕ボタンの行に掛からない高さまでしか上げない */
+  const keep = Math.min(g.top, (ART_INK[key] || g).top);
+  const minTop = guard - artH * keep;
   /* 絵は、上のあきと下のあきが同じくらいになる高さに置く */
   const inkH2 = artH * (g.bottom - g.top);      // 絵そのもの（空を除く）の高さ
   /* 絵の中身が、置ける範囲の上下の真ん中に来る位置を返す */
