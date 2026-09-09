@@ -26,6 +26,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=2">
+<!-- ホーム画面に追加したときの名前・アイコン・向き（Android / PC）。iPhone は apple-touch-icon を使う -->
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0A55FF">
+<meta name="apple-mobile-web-app-title" content="プログラム年鑑">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- 最初に見える絵を HTML の解析を待たずに取りに行く。media で使う1枚だけ -->
@@ -845,6 +849,17 @@ a{color:var(--accent)}
 .hsfield input::placeholder{color:var(--ink-3); font-weight:400}
 .hsfield input::-webkit-search-cancel-button{display:none}
 .hsfield input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-bg)}
+/* 入力後に一度で消せる ×。文字があるときだけ出す（JS が hidden を切り替える） */
+.hsfield input{padding-right:46px}
+.topbar .hsfield input{padding-right:42px}
+.hsfield .qclear{
+  position:absolute; right:9px; top:50%; transform:translateY(-50%);
+  width:30px; height:30px; border-radius:50%; border:0; padding:0; cursor:pointer;
+  background:var(--surface-3); color:var(--ink-2); display:flex; align-items:center; justify-content:center;
+}
+.hsfield .qclear svg{width:12px; height:12px}
+.hsfield .qclear:hover{background:var(--rule-2); color:var(--ink)}
+.hsfield .qclear[hidden]{display:none}
 
 /* ---- 「プログラムを探す」＋絞り込みをひとつのカードにまとめる ---- */
 .findcard{display:block}
@@ -1728,6 +1743,9 @@ footer.pagefoot b{color:var(--ink-2); font-weight:600}
           <path d="M10.8 10.8 14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
         </svg>
         <input id="q" type="search" placeholder="プログラム名・主催・キーワードで検索" aria-label="検索">
+        <button class="qclear" id="qclear" type="button" aria-label="検索語を消す" hidden>
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
       </span>
     </div>
   </div>
@@ -2482,6 +2500,7 @@ function readUrl(){
   const v = u.get("view");
   if(v === "cal" || v === "time") state.view = v;
   if(state.q) $("#q").value = state.q;
+  syncQClear();
   const mark = (sel, set, key) => $$(sel).forEach(b => {
     if(set.has(b.dataset[key])) b.setAttribute("aria-pressed", "true");
   });
@@ -2892,11 +2911,19 @@ function paintFilterBadge(){
 }
 
 let timer;
+function syncQClear(){ $("#qclear").hidden = !$("#q").value; }
+function clearQ(){
+  clearTimeout(timer);                    /* 入力直後の遅延反映が、消したあとに古い語で走らないように */
+  $("#q").value = ""; state.q = "";
+  syncQClear(); render(); $("#q").focus();
+}
 $("#q").addEventListener("input", e => {
   clearTimeout(timer);
   const raw = e.target.value;
+  syncQClear();
   timer = setTimeout(() => { state.q = kanaKey(raw.trim()); render(); }, 140);
 });
+$("#qclear").addEventListener("click", clearQ);
 $("#sort").addEventListener("change", e => { state.sort = e.target.value; render(); jumpToList(); });
 /* 幅が変わると列数も変わる。並べ直して半端な行を残さない */
 let reflowTimer = null;
@@ -2939,7 +2966,7 @@ $("#timeline").addEventListener("click", e => {
 });
 function resetFilters(){
   state.fmt.clear(); state.run.clear(); state.grades.clear(); state.fields.clear(); state.destOnly = false; state.q = "";
-  $("#q").value = "";
+  $("#q").value = ""; syncQClear();
   $$('.fchip[aria-pressed="true"]').forEach(b => b.setAttribute("aria-pressed","false"));
   $("#destOnly").setAttribute("aria-pressed", "false");
 }
@@ -3040,7 +3067,10 @@ function jumpToList(force){
   const y = $(".filters").getBoundingClientRect().top + window.scrollY - barH();
   if(force || window.scrollY < y - 2) window.scrollTo({top:y, behavior:"smooth"});
 }
-$("#q").addEventListener("keydown", e => { if(e.key === "Enter") jumpToList(); });
+$("#q").addEventListener("keydown", e => {
+  if(e.key === "Enter") jumpToList();
+  if(e.key === "Escape" && $("#q").value){ e.stopPropagation(); clearQ(); }   /* Esc でも消せる */
+});
 /* マウスを乗せている間・キーボードで中にいる間は自動送りを止める */
 ["mouseenter","focusin"].forEach(ev => $("#heroDue").addEventListener(ev, () => { duePaused = true; }));
 ["mouseleave","focusout"].forEach(ev => $("#heroDue").addEventListener(ev, () => { duePaused = false; }));
