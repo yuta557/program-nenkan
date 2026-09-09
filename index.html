@@ -2075,6 +2075,16 @@ const ART_GEO = {
   "art-it":   {w:520, h:626, bottom:.933, top:.441, left:.077},
   "art-biz":  {w:520, h:601, bottom:.958, top:.260, left:.077}
 };
+/* 絵の「描かれている範囲」（白でない画素の上端・下端。画像を実測した値）。
+   スクロールで絵を上げるときは、この範囲を一切切らない */
+const ART_INK = {
+  "art-lab":  {top:0,    bottom:.970},
+  "art-intl": {top:0,    bottom:.981},
+  "art-sci":  {top:.007, bottom:.947},
+  "art-hum":  {top:.275, bottom:.944},
+  "art-it":   {top:0,    bottom:.944},
+  "art-biz":  {top:.260, bottom:.980}
+};
 /* 幅の狭いスマホで、詳細の分野タグ行が2行に折り返すときは、サブの分野を消して1行に収める（メインは残す） */
 function fitTags(){
   const tags = document.querySelector("#dialog .sheet-head .tags");
@@ -2118,21 +2128,22 @@ function fitCollapse(){
   const size = parseFloat(getComputedStyle(art).backgroundSize) || 0;
   const artH = sr.width * size / 100 * (g.h / g.w);
   const artTop = parseFloat(getComputedStyle(sheet).getPropertyValue("--art-top")) || 0;
-  const inkTop = artTop + artH * g.top;              /* 絵の中身（空を除く）の上端・下端 */
-  const inkBot = artTop + artH * g.bottom;
-  const inkH = inkBot - inkTop;
+  const ink = ART_INK[key] || {top:0, bottom:1};
+  const inkTop = artTop + artH * ink.top;            /* 描かれている範囲の上端・下端（実測） */
+  const inkBot = artTop + artH * ink.bottom;
   const cr = clip.getBoundingClientRect();
   const clipTop = cr.top - sr.top;                   /* 概要の枠の上端（見出し・団体名の直下） */
   /* 絵はタグ行（✕ボタン）の下までは上げてよい。その線より上は切る */
   const xb = sheet.querySelector(".xbtn");
   const guard = (xb ? xb.getBoundingClientRect().bottom - sr.top : 64) + 4;
-  /* 絵は、中身の上端がタグ行の下に届いたあと、さらに中身の2割ほど削れるところまで上げる */
-  const artMax = Math.max(0, inkTop - guard + inkH * 0.22);
+  /* 絵は、描かれている範囲の上端がタグ行の下（少し余白）に届くところまで。それ以上は上げず、切らない */
+  const artMax = Math.max(0, inkTop - guard - 4);
   const d = sheet.dataset;
   d.collapseMax = artMax; d.collapseH0 = cr.height; d.collapseClipTop = clipTop;
   d.collapseInkBot = inkBot; d.collapseMargin = 16;
   d.bodyPad = parseFloat(getComputedStyle(body).paddingTop) || 0;
-  sheet.style.setProperty("--clip-top", guard + "px");
+  /* 切る線はタグ行の下。ただし絵が動けない（元から上端がその線より上にある）ときは、元の見え方のまま切らない */
+  sheet.style.setProperty("--clip-top", Math.min(guard, artTop) + "px");
   applyCollapse(sheet);
 }
 function applyCollapse(sheet){
