@@ -1,2 +1,6 @@
 /*
   X-Robots-Tag: noindex, nofollow, noarchive
+
+# 画像は1日キャッシュし、古いものを表示しつつ裏で更新する
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
