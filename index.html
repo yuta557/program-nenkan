@@ -1436,6 +1436,7 @@ main.wrap{padding-top:20px; padding-bottom:88px}
 }
 .sheet-head .tags .chipx .dot{width:6px; height:6px}
 .sheet-head .tags .due{font-size:12px; font-weight:700; padding:6px 13px 6px 11px; border-radius:var(--r-pill); margin-left:0}
+@media (max-width:720px){ .sheet-head .tags.one-row .chipx.sub{display:none} }   /* 2行になるときはサブ分野を消す（JS が one-row を付ける） */
 .sheet-head h2{
   font-family:"Zen Kaku Gothic New",var(--sans); font-size:29px; font-weight:900; line-height:1.28;
   margin:0 0 12px; letter-spacing:-.03em; color:var(--pt-ink); max-width:var(--txt);
@@ -1935,7 +1936,7 @@ function dueLabel(p){
     ? `<span class="due hot"><span class="dueDot"></span>${m}月締切</span>`
     : `<span class="due">${m}月締切</span>`;
 }
-const fieldPill = f => `<span class="chipx" style="--fc:var(${fvar(f)})"><span class="dot"></span><span class="t">${esc(f)}</span></span>`;
+const fieldPill = (f, extra = "") => `<span class="chipx${extra ? " " + extra : ""}" style="--fc:var(${fvar(f)})"><span class="dot"></span><span class="t">${esc(f)}</span></span>`;
 
 /* ---------- filter / sort ---------- */
 /* かたかなをひらがなに寄せて、書き方の違いで見つからなくならないようにする */
@@ -2066,6 +2067,15 @@ const ART_GEO = {
   "art-it":   {w:520, h:626, bottom:.933, top:.441, left:.077},
   "art-biz":  {w:520, h:601, bottom:.958, top:.260, left:.077}
 };
+/* 幅の狭いスマホで、詳細の分野タグ行が2行に折り返すときは、サブの分野を消して1行に収める（メインは残す） */
+function fitTags(){
+  const tags = document.querySelector("#dialog .sheet-head .tags");
+  if(!tags) return;
+  tags.classList.remove("one-row");
+  if(window.innerWidth > 720 || !tags.querySelector(".chipx.sub")) return;
+  const tops = new Set([...tags.children].map(c => Math.round(c.getBoundingClientRect().top)));
+  if(tops.size > 1) tags.classList.add("one-row");
+}
 function fitDesc(){
   const sheet = document.querySelector("#dialog .sheet");
   if(!sheet) return;
@@ -2185,7 +2195,7 @@ function openDetail(i, keep, fromPop){
   const inner = `<span class="sheet-art" aria-hidden="true"></span>
     <div class="sheet-head">
       <div class="b">
-        <div class="tags">${dueLabel(p)}<span class="chipx"><span class="t">${fmtLabel(p)}</span></span>${p.fields.map(fieldPill).join("")}</div>
+        <div class="tags">${dueLabel(p)}<span class="chipx"><span class="t">${fmtLabel(p)}</span></span>${p.fields.map((f, i) => fieldPill(f, i ? "sub" : "main")).join("")}</div>
         <h2 id="sheetTitle">${wordSpans(p.name)}</h2>
         <p class="org">${esc(p.org)}</p>
       </div>
@@ -2233,8 +2243,8 @@ function openDetail(i, keep, fromPop){
   /* 送ったあとも同じ矢印を押し続けられるように、押したボタンへ焦点を戻す */
   const back = keep === "next" ? $("#next") : keep === "prev" ? $("#prev") : null;
   (back && !back.disabled ? back : $("#xbtn")).focus();
-  fitDesc();
-  if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitDesc);
+  fitDesc(); fitTags();
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitDesc(); fitTags(); });
   bindSheetScroll(sheet);
 }
 function closeDetail(fromPop){
@@ -3004,6 +3014,7 @@ render = function(){ _render.apply(this, arguments); fitHooks(); syncUrl(); };
 window.addEventListener("resize", fitHooks);
 window.addEventListener("resize", tlNoteFit);
 window.addEventListener("resize", fitDesc);
+window.addEventListener("resize", fitTags);
 fitHooks();
 requestAnimationFrame(fitHooks);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitHooks);
