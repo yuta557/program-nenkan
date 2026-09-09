@@ -3017,6 +3017,19 @@ try {
   reveal($$(".findcard, .listmeta, .sites-sec"));
   reveal($$("#grid .card").slice(0, 24), true);
 } catch(e){}
+/* ---------- 画像の先読み ----------
+   詳細シートの絵（dt-*）とカード背景（cvbp-*）は開いた瞬間に初めて取りに行くので、
+   ページが落ち着いたあと裏で取得してキャッシュに入れておく。開くときの待ちを無くす。 */
+window.addEventListener("load", () => {
+  const warm = () => {
+    ["lab","sci","it","biz","hum","intl"].forEach(k => {
+      new Image().src = "assets/dt-" + k + "-tr.webp";
+      new Image().src = "assets/cvbp-" + k + ".webp";
+    });
+  };
+  if("requestIdleCallback" in window) requestIdleCallback(warm, {timeout:2500});
+  else setTimeout(warm, 1200);
+});
 </script>
 </body>
 </html>
