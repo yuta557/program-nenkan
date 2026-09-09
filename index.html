@@ -1474,6 +1474,9 @@ main.wrap{padding-top:20px; padding-bottom:88px}
   .rotate-note small{display:block; font-size:12px; font-weight:500; color:var(--ink-2); margin-top:2px}
   /* 案内の下でページがスクロールしないようにする */
   html, body{overflow:hidden; height:100%}
+  /* 開いている詳細シートは最前面レイヤーにあって案内より上に来るので、横向きのあいだは見えなくする
+     （閉じはしない。縦に戻せばそのまま元どおり表示される） */
+  .backdrop[open], .backdrop::backdrop{visibility:hidden}
 }
 @media (max-height:480px){
   .sheet-head{flex:0 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch}
